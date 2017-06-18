@@ -1,0 +1,9 @@
+{
+  "name": "local-file",
+  "config": {
+    "connector.class": "FileStreamSource",
+    "file": "/tmp/test.txt",
+    "tasks.max": "10",
+    "topic": "connect-test"
+  }
+}

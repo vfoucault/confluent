@@ -1,0 +1,94 @@
+#!/bin/bash
+echo $ID
+echo $ROLE
+
+
+function set_names {
+        if [ -z "$BROKER" ]
+	then
+		BROKER='broker:9092'
+	fi
+        if [ -z "$REGISTRY" ]
+	then
+		REGISTRY='http://registry:8081'
+	fi
+        if [ -z "$ZOOKEEPER" ]
+	then
+		ZOOKEEPER='zookeeper:2181'
+	fi
+        if [ -z "$CONNECT" ]
+	then
+		CONNECT='connect:8083'
+	fi
+        if [ -z "$REST" ]
+	then
+		REST='kafkarest:8082'
+	fi
+}
+function exportjmx {
+	export KAFKA_OPTS="$KAFKA_OPTS -javaagent:/usr/share/java/jmx_prometheus_javaagent-0.9.jar=7071:/etc/kafka/jmx_exporter_kafka.yml"
+}
+
+function set_up_kafka_rest { 
+	echo $Message
+	sed -i -e 's/#zookeeper.connect=localhost:2181/zookeeper.connect='"$ZOOKEEPER"'/' /etc/kafka-rest/kafka-rest.properties
+	sed -i -e 's/#schema.registry=http:\/\/localhost:2181/schema.registry='"$REGISTRY"'/' /etc/kafka-rest/kafka-rest.properties
+	sed -i -e 's/#id=kafka-rest-test-server/id=kafka-rest-server/' /etc/kafka-rest/kafka-rest.properties
+        wait-for-it -h zookeeper -p 2181 -- kafka-rest-start /etc/kafka-rest/kafka-rest.properties
+       }  
+
+function set_up_connect { 
+	echo $Message
+	sed -i -e 's/bootstrap.servers=localhost:9092/bootstrap.servers='"$BROKER"'/' /etc/kafka/connect-distributed.properties
+        wait-for-it -h broker -p 9092 -- connect-distributed /etc/kafka/connect-distributed.properties
+       }  
+
+function set_up_registry { 
+	echo $Message
+	sed -i -e 's/kafkastore.connection.url=localhost:2181/kafkastore.connection.url='"$ZOOKEEPER"'/' /etc/schema-registry/schema-registry.properties
+        wait-for-it -h broker -p 9092 -- schema-registry-start /etc/schema-registry/schema-registry.properties
+       }  
+
+function set_up_broker {
+	echo $Message
+	sed -i -e 's/zookeeper.connect=localhost:2181/zookeeper.connect='"$ZOOKEEPER"'/' /etc/kafka/server.properties
+	sed -i -n '/broker.id/!p' /etc/kafka/server.properties
+	wait-for-it -h zookeeper -p 2181 -- kafka-server-start /etc/kafka/server.properties
+       }  
+
+function set_up_zookeeper {
+	echo $Message
+	zookeeper-server-start /etc/kafka/zookeeper.properties
+}
+
+
+set_names
+exportjmx
+
+case $ROLE in
+"broker")
+  Message="This a broker instance."
+  set_up_broker
+  ;;
+"registry")
+  Message="This a registry instance."
+  set_up_registry
+  ;;
+"zookeeper")
+  Message="This a zookeeper instance."
+  set_up_zookeeper
+  ;;
+"connect")
+  Message="This a connect instance."
+  set_up_connect
+  ;;
+"rest")
+  Message="This a rest instance."
+  set_up_kafka_rest
+  ;;
+*)
+  Message="I seem to be running with an nonexistent amount of disk space..."
+  ;;
+esac
+
+

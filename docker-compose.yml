@@ -1,0 +1,77 @@
+version: '3'
+services:
+  zookeeper:
+    image: "vfoucault/confluent:0.2"
+    environment:
+      - ROLE=zookeeper
+  broker:
+    image: "vfoucault/confluent:0.2"
+    environment:
+      - ROLE=broker
+    links:
+      - zookeeper
+  registry:
+    image: "vfoucault/confluent:0.2"
+    environment:
+      - ROLE=registry
+    links:
+      - zookeeper
+  connect-ui:
+    image: "landoop/kafka-connect-ui:latest"
+    environment:
+      - CONNECT_URL=http://connect:8083 
+    links:
+      - connect:connect
+    ports:
+      - 8000:8000
+  kafka-ui:
+    image: "landoop/kafka-topics-ui:latest"
+    environment:
+      - KAFKA_REST_PROXY_URL=http://kafkarest:8082 
+    links:
+      - broker
+      - kafkarest
+    ports:
+      - 8001:8000
+  schema-ui:
+    image: "landoop/schema-registry-ui:latest"
+    environment:
+       - SCHEMAREGISTRY_URL=http://registry:8081
+    links:
+      - broker
+    ports:
+      - 8002:8000
+  connect:
+    image: "vfoucault/confluent:0.2"
+    environment:
+      - ROLE=connect
+    links:
+      - broker
+  kafkarest:
+    image: "vfoucault/confluent:0.2"
+    environment:
+      - ROLE=rest
+    links:
+      - broker
+      - registry
+      - zookeeper
+  #  prometheus:
+  #    image: "prom/prometheus:latest"
+  #    links:
+  #      - broker
+  #      - zookeeper
+  #      - connect
+  #      - registry
+  #    ports:
+  #      - 9090:9090
+  #    volumes:
+  #      - /Users/vfoucault/projects/confluent/promvolumes/data:/prometheus
+  #      - /Users/vfoucault/projects/confluent/promvolumes/config:/config
+  #    entrypoint:
+  #      - "/bin/prometheus"
+  #      - "-config.file=/config/prometheus.yml"
+  #      - "-storage.local.path=/prometheus"
+  #      - "-web.console.libraries=/etc/prometheus/console_libraries"
+  #      - "-web.console.templates=/etc/prometheus/consoles"
+
+
